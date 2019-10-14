@@ -52,6 +52,8 @@ public class Compilo {
     }
     */
 
+    //TODO : Analyse effective (choix fait de continuer avec les résultats que l'on devrait obtenir)
+
     //On analyse l'interface, et on obtient :
     methods[0] = "constructeur";
     methodsArg[0] = "int";
@@ -124,6 +126,12 @@ public class Compilo {
         }
       } else writers[0].write(line + "\n");
     }
+
+    //TODO : Code du Client : ouvrir les sockets et transformer les appels
+
+    //TODO : Code des autres classes (ici, simplement Result). Tout ce qui change = implements Serializable
+
+    //TODO : traitement des erreurs.
 
 
     //Fermeture des writers :
