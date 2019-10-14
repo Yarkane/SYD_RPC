@@ -1,5 +1,5 @@
 package rpc;
-public class Matlab {
+public class Matlab implements MatlabIfc {
   private int i;
 
   public Matlab(int i) {
