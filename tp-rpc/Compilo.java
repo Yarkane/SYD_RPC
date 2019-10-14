@@ -20,17 +20,21 @@ public class Compilo {
     BufferedReader brIfc = new BufferedReader(readerIfc);
 
 
-    //Noms des méthodes
-    String[][] methods;
+    //Noms des méthodes. 6 Maximum.
+    String[] methods;
+    methods = new String[5];
 
     //Arguments des méthodes
-    String[][] methodsArg;
+    String[] methodsArg;
+    methodsArg = new String[5];
 
     //Retour des méthodes
-    String[][] methodsRet;
+    String[] methodsRet;
+    methodsRet = new String[5];
 
-    //Noms des classes
-    String[][] classes;
+    //Noms des classes. 6 Maximum.
+    String[] classes;
+    classes = new String[5];
 
     //Lecture des méthodes de l'interface de Matlab
 
@@ -57,28 +61,74 @@ public class Compilo {
     methodsArg[1] = "int";
     methodsArg[1] = "Result";
 
-    classes[0] = "Matlab";
+    classes[0] = "Matlab"; //Quel que soit son nom, la classe 0 sera forcément celle implémentant l'interface
     classes[1] = "Result";
 
     //On sait aussi qu'il existe, nécessairement, une classe client
-    
+
+    classes[2] = "Client";
+
 
     //UNE FOIS QU'ON A LES NOMS DES CLASSES
-    //Création des readers
-    /*
-    FileReader readerClient = new FileReader(+".java");
-    BufferedReader brClient = new BufferedReader(readerClient);
+    //Création des readers et writers
 
-    FileReader readerMatlab = new FileReader("Matlab.java");
-    BufferedReader brMatlab = new BufferedReader(readerMatlab);
+    BufferedReader[] readers;
+    readers = new BufferedReader[classes.length-1];
 
-    FileReader readerResult = new FileReader("Result.java");
-    BufferedReader brResult = new BufferedReader(readerResult);
+    BufferedWriter[] writers;
+    writers = new BufferedWriter[classes.length-1];
 
-    //Création des Writers
-    BufferedWriter writerClient = new BufferedWriter(new FileWriter("Client_RPC.java"));
-    BufferedWriter writerMatlab = new BufferedWriter(new FileWriter("Matlab_RPC.java"));
-    BufferedWriter writerResult = new BufferedWriter(new FileWriter("Result_RPC.java"));
-    */
+    for(int i=0; i<classes.length;i++){
+      FileReader readerClient = new FileReader(classes[i] +".java");
+      readers[i] = new BufferedReader(readerClient);
+
+      writers[i] = new BufferedWriter(new FileWriter( "v2/"+ classes[i] + ".java"));
+    }
+
+    //Edition du fichier matlab.java (celui correspondant à l'interface) :
+
+    //On lit/recopie jusqu'à trouver le début de la classe.
+    String line;
+    while ((line = readers[0].readLine()) != null) {
+      if (line.contains("class " + classes[0])) {
+        //On écrit un main()
+        writers[0].write("    " + classes[0] + " m = null;\n");
+        writers[0].write("    java.net.ServerSocket sos = new java.net.ServerSocket(" + port + ");\n");
+        writers[0].write("    java.net.Socket s = sos.accept();\n");
+        writers[0].write("    java.io.DataInputStream dis = new java.io.DataInputStream(s.getInputStream());\n");
+        writers[0].write("    java.io.ObjectOutputStream oos = new java.io.ObjectOutputStream(s.getOutputStream());\n");
+        writers[0].write("    String fonction = dis.readUTF();\n");
+        //A présent, on inclut les méthodes.
+        for (int j = 0; j < methods.length; j++) {
+          writers[0].write("        if (fonction.equals(\"" + methods[j] + "\")) {\n");
+          //SI CONSTRUCTEUR : Syntaxe précise
+          if (methods[j].equals("constructeur")) writers[0].write("      m = new " + classes[0] + "(dis.");
+            //Sinon, on considère que la fonction retourne un objet.
+          else writers[0].write("      oos.writeObject(m.calcul(dis.");
+
+          //A présent, que faut-il lire ? L'entrée dépend de l'argument de la fonction.
+          if (methodsArg[j].equals("int")) writers[0].write("readInt());\n");
+          else if (methodsArg[j].equals("float")) writers[0].write("readFloat());\n");
+          else if (methodsArg[j].equals("char")) writers[0].write("readChar());\n");
+          else writers[0].write("readByte());\n");
+
+          //On clot la fonction.
+          writers[0].write("    }\n");
+        }
+        //On clot le main
+        writers[0].write("  }\n");
+
+        //Après, il suffit de recopier les autres méthodes du fichier de base.
+        while ((line = readers[0].readLine()) != null) {
+          writers[0].write(line + "\n");
+        }
+      } else writers[0].write(line + "\n");
+    }
+
+
+    //Fermeture des writers :
+
+    for(int i=0; i<writers.length; i++) writers[i].close();
+
  }
 }
