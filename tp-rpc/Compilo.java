@@ -127,9 +127,80 @@ public class Compilo {
       } else writers[0].write(line + "\n");
     }
 
-    //TODO : Code du Client : ouvrir les sockets et transformer les appels
+    //Transformation du code du client : toujours en dernière position.
+    int nClient = readers.length - 1;
+    while ((line = readers[nClient].readLine()) != null) {
+      //Le client comporte nécessairement un main
+      if(line.contains("public static void main(")){
+        //Première étape : ouvrir socket
+        writers[nClient].write(line + "\n");
+        writers[nClient].write("    java.net.Socket s = new java.net.Socket(\\\"localhost\\\", \" + port + \");\n");
+        writers[nClient].write("    java.io.DataOutputStream dos = new java.io.DataOutputStream(s.getOutputStream());\n");
+        writers[nClient].write("    java.io.ObjectInputStream ois = new java.io.ObjectInputStream(s.getInputStream());\n");
+      }
+      //Il faut ensuite convertir les appels à des méthodes en appels à la socket.
+      //Création d'un objet, utilisation de la méthode constructeur
+      else if(line.contains(" new ")){
+        writers[nClient].write("    dos.writeUTF(\"constructeur\");\n");
+        //Lecture de l'argument et du nom (on suppose un seul argument)
+        int parentheseOuvrante = line.indexOf('(');
+        int parentheseFermante = line.indexOf(')');
+        int egal = line.indexOf("=");
+        int espace = line.indexOf(" ");
+        for (int i =  0; line.indexOf(" ",i) < egal-1; i++){
+          espace = line.indexOf(" ", i);
+        }
+        String argu = line.substring(parentheseOuvrante+1,parentheseFermante);
+        writers[nClient].write("    dos.write");
+        //Que faut-il envoyer ? la sortie dépend de l'argument.
+        if (methodsArg[0].equals("int")) writers[0].write("Int(");
+        else if (methodsArg[0].equals("float")) writers[0].write("Float(");
+        else if (methodsArg[0].equals("char")) writers[0].write("Char(");
+        else writers[nClient].write("Byte(");
+        //On ajoute l'argument.
+        writers[nClient].write(argu + ");\n");
+      }
+      //Utilisation de toute autre méthode :
+      else if (line.contains(".")) {
+        boolean hasBeenWritten = false; //Nous permet de vérifier si la ligne a pu être réécrite
+        for (int j = 1; j < methods.length; j++) {
+          if (line.contains(methods[j])) {
+            //Lecture de l'argument et du nom de la méthode (on suppose un seul argument)
+            int parentheseOuvrante = line.indexOf('(');
+            int parentheseFermante = line.indexOf(')');
+            int egal = line.indexOf("=");
+            String argu = line.substring(parentheseOuvrante + 1, parentheseFermante);
+            writers[nClient].write("    dos.writeUTF(\"" + methods[j] + "\");\n");
+            writers[nClient].write("    dos.write");
+            //Que faut-il envoyer ? la sortie dépend de l'argument.
+            if (methodsArg[0].equals("int")) writers[0].write("Int(");
+            else if (methodsArg[0].equals("float")) writers[0].write("Float(");
+            else if (methodsArg[0].equals("char")) writers[0].write("Char(");
+            else writers[nClient].write("Byte(");
+            //On ajoute l'argument.
+            writers[nClient].write(argu + ");\n");
+            hasBeenWritten = true;
+          }
+        }
+        if (!hasBeenWritten) writers[nClient].write(line + "\n");
+      }
+      else writers[nClient].write(line + "\n");
+    }
 
-    //TODO : Code des autres classes (ici, simplement Result). Tout ce qui change = implements Serializable
+
+    //Code des autres classes. Il n'y a pas grand chose à changer, à part implémenter Serializable
+    if(nClient>1){
+      for(int i=1; i<nClient; i++){
+        while ((line = readers[i].readLine()) != null) {
+          if (line.contains("class "+methods[i])){
+            int acolladeOuvrante = line.indexOf('{');
+            writers[i].write(line.substring(0,acolladeOuvrante));
+            writers[i].write("implements Serializable {\n");
+          }
+          else writers[i].write(line);
+        }
+      }
+    }
 
     //TODO : traitement des erreurs.
 
