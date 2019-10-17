@@ -12,14 +12,22 @@ import java.util.ArrayList;
 public class Compilo {
   public static void main(String [] arg) throws IOException {
     //Gestion des arguments :
-    //TODO : faire en mieux
-    if (arg.length != 3) {
-      System.out.println("Bad usage : Compilateur <chemin_vers_les_classes_avec_/> <nom_du_fichier_java_de_l_interface> <port>");
+    if (arg.length == 0 || !(arg.length == 2 || (arg.length==4 && arg[0].equals("-f")))){
+      System.out.println("Bad usage : Compilateur [-f chemin_vers_les_classes_avec_/] <nom_du_fichier_java_de_l_interface> <port>");
       return;
     }
-    String folder = arg[0];
-    String filename = arg[1];
-    String port = arg[2];
+    String folder;
+    String filename;
+    String port;
+    if (arg.length == 4) {
+      folder = arg[1];
+      filename = arg[2];
+      port = arg[3];
+    }else{
+      folder = "";
+      filename = arg[0];
+      port = arg[1];
+    }
 
     //Création du reader de l'interface
     FileReader readerIfc = new FileReader(folder + filename);
