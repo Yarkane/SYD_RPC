@@ -12,6 +12,7 @@ import java.util.ArrayList;
 public class Compilo {
   public static void main(String [] arg) throws IOException {
     //Gestion des arguments :
+    //TODO : faire en mieux
     if (arg.length != 3) {
       System.out.println("Bad usage : Compilateur <chemin_vers_les_classes_avec_/> <nom_du_fichier_java_de_l_interface> <port>");
       return;
@@ -80,10 +81,10 @@ public class Compilo {
     //Création des readers et writers
 
     BufferedReader[] readers;
-    readers = new BufferedReader[classes.size()-1];
+    readers = new BufferedReader[classes.size()];
 
     BufferedWriter[] writers;
-    writers = new BufferedWriter[classes.size()-1];
+    writers = new BufferedWriter[classes.size()];
 
 
 
@@ -101,8 +102,15 @@ public class Compilo {
     //On lit/recopie jusqu'à trouver le début de la classe.
     String line;
     while ((line = readers[0].readLine()) != null) {
-      if (line.contains("class " + classes.get(0))) {
+      if (line.contains("package")){
+        int pointVirgule;
+        pointVirgule = line.indexOf(";");
+        writers[0].write(line.substring(0,pointVirgule) + ".v2;\n");
+      }
+      else if (line.contains("class " + classes.get(0))) {
         //On écrit un main()
+        writers[0].write(line + "\n");
+        writers[0].write("  public static void main(String [] arg) throws java.io.IOException {\n");
         writers[0].write("    " + classes.get(0) + " m = null;\n");
         writers[0].write("    java.net.ServerSocket sos = new java.net.ServerSocket(" + port + ");\n");
         writers[0].write("    java.net.Socket s = sos.accept();\n");
@@ -118,10 +126,10 @@ public class Compilo {
           else writers[0].write("      oos.writeObject(m.calcul(dis.");
 
           //A présent, que faut-il lire ? L'entrée dépend de l'argument de la fonction.
-          if (methodsArg.get(j).equals("int")) writers[0].write("readInt());\n");
-          else if (methodsArg.get(j).equals("float")) writers[0].write("readFloat());\n");
-          else if (methodsArg.get(j).equals("char")) writers[0].write("readChar());\n");
-          else writers[0].write("readByte());\n");
+          if (methodsArg.get(j).equals("int")) writers[0].write("readInt()));\n");
+          else if (methodsArg.get(j).equals("float")) writers[0].write("readFloat()));\n");
+          else if (methodsArg.get(j).equals("char")) writers[0].write("readChar()));\n");
+          else writers[0].write("readByte()));\n");
 
           //On clot la fonction.
           writers[0].write("    }\n");
@@ -139,11 +147,16 @@ public class Compilo {
     //Transformation du code du client : toujours en dernière position.
     int nClient = readers.length - 1;
     while ((line = readers[nClient].readLine()) != null) {
+      if (line.contains("package")){
+        int pointVirgule;
+        pointVirgule = line.indexOf(";");
+        writers[nClient].write(line.substring(0,pointVirgule) + ".v2;\n");
+      }
       //Le client comporte nécessairement un main
-      if(line.contains("public static void main(")){
+      else if(line.contains("public static void main(")){
         //Première étape : ouvrir socket
-        writers[nClient].write(line + "\n");
-        writers[nClient].write("    java.net.Socket s = new java.net.Socket(\\\"localhost\\\", \" + port + \");\n");
+        writers[nClient].write("public static void main(String [] arg) throws java.io.IOException {\n");
+        writers[nClient].write("    java.net.Socket s = new java.net.Socket(\"\\\\localhost\\\\\", " + port + ");\n");
         writers[nClient].write("    java.io.DataOutputStream dos = new java.io.DataOutputStream(s.getOutputStream());\n");
         writers[nClient].write("    java.io.ObjectInputStream ois = new java.io.ObjectInputStream(s.getInputStream());\n");
       }
@@ -162,15 +175,15 @@ public class Compilo {
         String argu = line.substring(parentheseOuvrante+1,parentheseFermante);
         writers[nClient].write("    dos.write");
         //Que faut-il envoyer ? la sortie dépend de l'argument.
-        if (methodsArg.get(0).equals("int")) writers[0].write("Int(");
-        else if (methodsArg.get(0).equals("float")) writers[0].write("Float(");
-        else if (methodsArg.get(0).equals("char")) writers[0].write("Char(");
-        else writers[nClient].write("Byte(");
+        if (methodsArg.get(0).equals("int")) writers[nClient].write("Int(");
+        else if (methodsArg.get(0).equals("float")) writers[nClient].write("Float(");
+        else if (methodsArg.get(0).equals("char")) writers[nClient].write("Char(");
+        else writers[0].write("Byte(");
         //On ajoute l'argument.
         writers[nClient].write(argu + ");\n");
       }
       //Utilisation de toute autre méthode :
-      else if (line.contains("")) {
+      else if (line.contains(".")) {
         boolean hasBeenWritten = false; //Nous permet de vérifier si la ligne a pu être réécrite
         for (int j = 1; j < methods.size(); j++) {
           if (line.contains(methods.get(j))) {
@@ -182,9 +195,9 @@ public class Compilo {
             writers[nClient].write("    dos.writeUTF(\"" + methods.get(j) + "\");\n");
             writers[nClient].write("    dos.write");
             //Que faut-il envoyer ? la sortie dépend de l'argument.
-            if (methodsArg.get(0).equals("int")) writers[0].write("Int(");
-            else if (methodsArg.get(0).equals("float")) writers[0].write("Float(");
-            else if (methodsArg.get(0).equals("char")) writers[0].write("Char(");
+            if (methodsArg.get(j).equals("int")) writers[nClient].write("Int(");
+            else if (methodsArg.get(j).equals("float")) writers[nClient].write("Float(");
+            else if (methodsArg.get(j).equals("char")) writers[nClient].write("Char(");
             else writers[nClient].write("Byte(");
             //On ajoute l'argument.
             writers[nClient].write(argu + ");\n");
@@ -201,12 +214,17 @@ public class Compilo {
     if(nClient>1){
       for(int i=1; i<nClient; i++){
         while ((line = readers[i].readLine()) != null) {
-          if (line.contains("class "+methods.get(i))){
+          if (line.contains("package")){
+              int pointVirgule;
+              pointVirgule = line.indexOf(";");
+              writers[i].write(line.substring(0,pointVirgule) + ".v2;\n");
+          }
+          else if (line.contains("class "+methods.get(i))){
             int acolladeOuvrante = line.indexOf('{');
             writers[i].write(line.substring(0,acolladeOuvrante));
             writers[i].write("implements Serializable {\n");
           }
-          else writers[i].write(line);
+          else writers[i].write(line+"\n");
         }
       }
     }
