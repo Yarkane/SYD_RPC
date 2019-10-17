@@ -42,23 +42,28 @@ public class Compilo {
     ArrayList<String> classes;
     classes = new ArrayList<String>();
 
-    //Lecture des méthodes de l'interface de Matlab
+    //Nous allons réécrire le fichier interface.
+    File dir = new File (folder + "/v2");
+    dir.mkdirs();
+    BufferedWriter bwIfc = new BufferedWriter(new FileWriter( folder + "v2/"+ filename));
 
-    /*
+    //Lecture des méthodes de l'interface de Matlab
     String line;
     while ((line = brIfc.readLine()) != null) {
-      if(line.contains('(')){
-        String[][] elements = line.split(" ");
-        for (int i; i<elements.length; i++){
-          //...
-
-          }
-        }
+      //Regular expression
+      // ........
+      if (line.contains("package")){
+        int pointVirgule;
+        pointVirgule = line.indexOf(";");
+        bwIfc.write(line.substring(0,pointVirgule) + ".v2;\n");
       }
+      else bwIfc.write(line + "\n");
     }
-    */
+
 
     //TODO : Analyse effective (choix fait de continuer avec les résultats que l'on devrait obtenir)
+    //Il est possible de parvenir à ces résultats par le biais de RegExp.
+    //Néanmoins, ne les maîtrisant pas, je préfère m'atteler à la partie "compilation" des fichiers.
 
     //On analyse l'interface, et on obtient :
     methods.add("constructeur");
@@ -92,15 +97,12 @@ public class Compilo {
       FileReader readerClient = new FileReader(folder + classes.get(i) +".java");
       readers[i] = new BufferedReader(readerClient);
 
-      File dir = new File (folder + "/v2");
-      dir.mkdirs();
       writers[i] = new BufferedWriter(new FileWriter( folder + "v2/"+ classes.get(i) + ".java"));
     }
 
     //Edition du fichier matlab.java (celui correspondant à l'interface) :
 
     //On lit/recopie jusqu'à trouver le début de la classe.
-    String line;
     while ((line = readers[0].readLine()) != null) {
       if (line.contains("package")){
         int pointVirgule;
@@ -126,10 +128,13 @@ public class Compilo {
           else writers[0].write("      oos.writeObject(m.calcul(dis.");
 
           //A présent, que faut-il lire ? L'entrée dépend de l'argument de la fonction.
-          if (methodsArg.get(j).equals("int")) writers[0].write("readInt()));\n");
-          else if (methodsArg.get(j).equals("float")) writers[0].write("readFloat()));\n");
-          else if (methodsArg.get(j).equals("char")) writers[0].write("readChar()));\n");
-          else writers[0].write("readByte()));\n");
+          if (methodsArg.get(j).equals("int")) writers[0].write("readInt())");
+          else if (methodsArg.get(j).equals("float")) writers[0].write("readFloat())");
+          else if (methodsArg.get(j).equals("char")) writers[0].write("readChar())");
+          else writers[0].write("readByte())");
+          //Si pas constructeur : on doit rajouter une parenthèse pour que la syntaxe soit correcte
+          if (!methods.get(j).equals("constructeur")) writers[0].write(")");
+          writers[0].write(";\n");
 
           //On clot la fonction.
           writers[0].write("    }\n");
@@ -146,7 +151,12 @@ public class Compilo {
 
     //Transformation du code du client : toujours en dernière position.
     int nClient = readers.length - 1;
+    //On initialise un nom de variable résultat qui pourra avoir à être remplacé.
+    //On lui donne une valeur invalide pour commencer.
+    String res = "/;;;;;;;;;/";
     while ((line = readers[nClient].readLine()) != null) {
+      //Avant toute chose : si l'on a une variable "résultat", on lit sur la socket.
+      line = line.replaceAll(res,"ois.readObject()");
       if (line.contains("package")){
         int pointVirgule;
         pointVirgule = line.indexOf(";");
@@ -155,7 +165,7 @@ public class Compilo {
       //Le client comporte nécessairement un main
       else if(line.contains("public static void main(")){
         //Première étape : ouvrir socket
-        writers[nClient].write("public static void main(String [] arg) throws java.io.IOException {\n");
+        writers[nClient].write("  public static void main(String [] arg) throws Exception {\n");
         writers[nClient].write("    java.net.Socket s = new java.net.Socket(\"\\\\localhost\\\\\", " + port + ");\n");
         writers[nClient].write("    java.io.DataOutputStream dos = new java.io.DataOutputStream(s.getOutputStream());\n");
         writers[nClient].write("    java.io.ObjectInputStream ois = new java.io.ObjectInputStream(s.getInputStream());\n");
@@ -202,6 +212,13 @@ public class Compilo {
             //On ajoute l'argument.
             writers[nClient].write(argu + ");\n");
             hasBeenWritten = true;
+            //On récupère, enfin, le nom de la variable résultat.
+            int espace = line.indexOf(" ");
+            for (int i =  0; line.indexOf(" ",i) < egal-1; i++){
+              espace = line.indexOf(" ", i);
+            }
+            String nomResultat = line.substring(espace+1,egal-1);
+            res = nomResultat;
           }
         }
         if (!hasBeenWritten) writers[nClient].write(line + "\n");
@@ -235,6 +252,7 @@ public class Compilo {
     //Fermeture des writers :
 
     for(int i=0; i<writers.length; i++) writers[i].close();
+    bwIfc.close();
 
  }
 }
