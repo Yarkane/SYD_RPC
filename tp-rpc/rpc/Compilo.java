@@ -1,46 +1,51 @@
-//package rpc;
+package rpc;
 
+import javax.swing.plaf.synth.SynthTabbedPaneUI;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
+import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 
 public class Compilo {
   public static void main(String [] arg) throws IOException {
     //Gestion des arguments :
-    if (arg.length != 2) {
-      System.out.println("Bad usage : Compilateur <nom_du_code_java_de_l_interface> <port>");
+    if (arg.length != 3) {
+      System.out.println("Bad usage : Compilateur <chemin_vers_les_classes_avec_/> <nom_du_fichier_java_de_l_interface> <port>");
+      return;
     }
-    String filename = arg[0];
-    String port = arg[1];
+    String folder = arg[0];
+    String filename = arg[1];
+    String port = arg[2];
 
     //Création du reader de l'interface
-    FileReader readerIfc = new FileReader(filename);
+    FileReader readerIfc = new FileReader(folder + filename);
     BufferedReader brIfc = new BufferedReader(readerIfc);
 
 
-    //Noms des méthodes. 6 Maximum.
-    String[] methods;
-    methods = new String[5];
+    //Noms des méthodes.
+    ArrayList<String> methods;
+    methods = new ArrayList<String>();
 
     //Arguments des méthodes
-    String[] methodsArg;
-    methodsArg = new String[5];
+    ArrayList<String> methodsArg;
+    methodsArg = new ArrayList<String>();
 
     //Retour des méthodes
-    String[] methodsRet;
-    methodsRet = new String[5];
+    ArrayList<String> methodsRet;
+    methodsRet = new ArrayList<String>();
 
-    //Noms des classes. 6 Maximum.
-    String[] classes;
-    classes = new String[5];
+    //Noms des classes.
+    ArrayList<String> classes;
+    classes = new ArrayList<String>();
 
     //Lecture des méthodes de l'interface de Matlab
 
     /*
     String line;
-    while ((line = br.readLine()) != null) {
+    while ((line = brIfc.readLine()) != null) {
       if(line.contains('(')){
         String[][] elements = line.split(" ");
         for (int i; i<elements.length; i++){
@@ -55,36 +60,40 @@ public class Compilo {
     //TODO : Analyse effective (choix fait de continuer avec les résultats que l'on devrait obtenir)
 
     //On analyse l'interface, et on obtient :
-    methods[0] = "constructeur";
-    methodsArg[0] = "int";
-    methodsRet[0] = "";
+    methods.add("constructeur");
+    methodsArg.add("int");
+    methodsRet.add("");
 
-    methods[1] = "calcul";
-    methodsArg[1] = "int";
-    methodsArg[1] = "Result";
+    methods.add("calcul");
+    methodsArg.add("int");
+    methodsArg.add("Result");
 
-    classes[0] = "Matlab"; //Quel que soit son nom, la classe 0 sera forcément celle implémentant l'interface
-    classes[1] = "Result";
+    classes.add("Matlab"); //Quel que soit son nom, la classe 0 sera forcément celle implémentant l'interface
+    classes.add("Result");
 
     //On sait aussi qu'il existe, nécessairement, une classe client
 
-    classes[2] = "Client";
+    classes.add("Client");
 
 
     //UNE FOIS QU'ON A LES NOMS DES CLASSES
     //Création des readers et writers
 
     BufferedReader[] readers;
-    readers = new BufferedReader[classes.length-1];
+    readers = new BufferedReader[classes.size()-1];
 
     BufferedWriter[] writers;
-    writers = new BufferedWriter[classes.length-1];
+    writers = new BufferedWriter[classes.size()-1];
 
-    for(int i=0; i<classes.length;i++){
-      FileReader readerClient = new FileReader(classes[i] +".java");
+
+
+    for(int i=0; i<classes.size();i++){
+      FileReader readerClient = new FileReader(folder + classes.get(i) +".java");
       readers[i] = new BufferedReader(readerClient);
 
-      writers[i] = new BufferedWriter(new FileWriter( "v2/"+ classes[i] + ".java"));
+      File dir = new File (folder + "/v2");
+      dir.mkdirs();
+      writers[i] = new BufferedWriter(new FileWriter( folder + "v2/"+ classes.get(i) + ".java"));
     }
 
     //Edition du fichier matlab.java (celui correspondant à l'interface) :
@@ -92,26 +101,26 @@ public class Compilo {
     //On lit/recopie jusqu'à trouver le début de la classe.
     String line;
     while ((line = readers[0].readLine()) != null) {
-      if (line.contains("class " + classes[0])) {
+      if (line.contains("class " + classes.get(0))) {
         //On écrit un main()
-        writers[0].write("    " + classes[0] + " m = null;\n");
+        writers[0].write("    " + classes.get(0) + " m = null;\n");
         writers[0].write("    java.net.ServerSocket sos = new java.net.ServerSocket(" + port + ");\n");
         writers[0].write("    java.net.Socket s = sos.accept();\n");
         writers[0].write("    java.io.DataInputStream dis = new java.io.DataInputStream(s.getInputStream());\n");
         writers[0].write("    java.io.ObjectOutputStream oos = new java.io.ObjectOutputStream(s.getOutputStream());\n");
         writers[0].write("    String fonction = dis.readUTF();\n");
         //A présent, on inclut les méthodes.
-        for (int j = 0; j < methods.length; j++) {
-          writers[0].write("        if (fonction.equals(\"" + methods[j] + "\")) {\n");
+        for (int j = 0; j < methods.size(); j++) {
+          writers[0].write("        if (fonction.equals(\"" + methods.get(j) + "\")) {\n");
           //SI CONSTRUCTEUR : Syntaxe précise
-          if (methods[j].equals("constructeur")) writers[0].write("      m = new " + classes[0] + "(dis.");
+          if (methods.get(j).equals("constructeur")) writers[0].write("      m = new " + classes.get(0) + "(dis.");
             //Sinon, on considère que la fonction retourne un objet.
           else writers[0].write("      oos.writeObject(m.calcul(dis.");
 
           //A présent, que faut-il lire ? L'entrée dépend de l'argument de la fonction.
-          if (methodsArg[j].equals("int")) writers[0].write("readInt());\n");
-          else if (methodsArg[j].equals("float")) writers[0].write("readFloat());\n");
-          else if (methodsArg[j].equals("char")) writers[0].write("readChar());\n");
+          if (methodsArg.get(j).equals("int")) writers[0].write("readInt());\n");
+          else if (methodsArg.get(j).equals("float")) writers[0].write("readFloat());\n");
+          else if (methodsArg.get(j).equals("char")) writers[0].write("readChar());\n");
           else writers[0].write("readByte());\n");
 
           //On clot la fonction.
@@ -153,29 +162,29 @@ public class Compilo {
         String argu = line.substring(parentheseOuvrante+1,parentheseFermante);
         writers[nClient].write("    dos.write");
         //Que faut-il envoyer ? la sortie dépend de l'argument.
-        if (methodsArg[0].equals("int")) writers[0].write("Int(");
-        else if (methodsArg[0].equals("float")) writers[0].write("Float(");
-        else if (methodsArg[0].equals("char")) writers[0].write("Char(");
+        if (methodsArg.get(0).equals("int")) writers[0].write("Int(");
+        else if (methodsArg.get(0).equals("float")) writers[0].write("Float(");
+        else if (methodsArg.get(0).equals("char")) writers[0].write("Char(");
         else writers[nClient].write("Byte(");
         //On ajoute l'argument.
         writers[nClient].write(argu + ");\n");
       }
       //Utilisation de toute autre méthode :
-      else if (line.contains(".")) {
+      else if (line.contains("")) {
         boolean hasBeenWritten = false; //Nous permet de vérifier si la ligne a pu être réécrite
-        for (int j = 1; j < methods.length; j++) {
-          if (line.contains(methods[j])) {
+        for (int j = 1; j < methods.size(); j++) {
+          if (line.contains(methods.get(j))) {
             //Lecture de l'argument et du nom de la méthode (on suppose un seul argument)
             int parentheseOuvrante = line.indexOf('(');
             int parentheseFermante = line.indexOf(')');
             int egal = line.indexOf("=");
             String argu = line.substring(parentheseOuvrante + 1, parentheseFermante);
-            writers[nClient].write("    dos.writeUTF(\"" + methods[j] + "\");\n");
+            writers[nClient].write("    dos.writeUTF(\"" + methods.get(j) + "\");\n");
             writers[nClient].write("    dos.write");
             //Que faut-il envoyer ? la sortie dépend de l'argument.
-            if (methodsArg[0].equals("int")) writers[0].write("Int(");
-            else if (methodsArg[0].equals("float")) writers[0].write("Float(");
-            else if (methodsArg[0].equals("char")) writers[0].write("Char(");
+            if (methodsArg.get(0).equals("int")) writers[0].write("Int(");
+            else if (methodsArg.get(0).equals("float")) writers[0].write("Float(");
+            else if (methodsArg.get(0).equals("char")) writers[0].write("Char(");
             else writers[nClient].write("Byte(");
             //On ajoute l'argument.
             writers[nClient].write(argu + ");\n");
@@ -192,7 +201,7 @@ public class Compilo {
     if(nClient>1){
       for(int i=1; i<nClient; i++){
         while ((line = readers[i].readLine()) != null) {
-          if (line.contains("class "+methods[i])){
+          if (line.contains("class "+methods.get(i))){
             int acolladeOuvrante = line.indexOf('{');
             writers[i].write(line.substring(0,acolladeOuvrante));
             writers[i].write("implements Serializable {\n");
