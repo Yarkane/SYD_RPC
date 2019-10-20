@@ -80,12 +80,12 @@ public class Compilo {
 
     methods.add("calcul");
     methodsArg.add("int");
-    methodsArg.add("Result");
+    methodsRet.add("Result");
 
     classes.add("Matlab"); //Quel que soit son nom, la classe 0 sera forcément celle implémentant l'interface
     classes.add("Result");
 
-    //On sait aussi qu'il existe, nécessairement, une classe client
+    //On sait aussi qu'il existe, nécessairement, une classe client (elle sera toujours à la fin)
 
     classes.add("Client");
 
@@ -254,7 +254,6 @@ public class Compilo {
       }
     }
 
-    //TODO : traitement des erreurs.
 
 
     //Fermeture des writers :

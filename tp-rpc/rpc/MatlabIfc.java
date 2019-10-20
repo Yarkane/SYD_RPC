@@ -1,4 +1,4 @@
 package rpc;
 public interface MatlabIfc {
-  public Result calcul(int i);
+  Result calcul(int i);
 }
